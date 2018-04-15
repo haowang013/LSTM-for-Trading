@@ -88,9 +88,10 @@ def LSTM_model(X):
     time_step = tf.shape(X)[1]
     w_in = weights['in']
     b_in = bias['in']
-    input_data = tf. reshape(X,[input_size,-1])
-    input_lstm = tf.matmul(w_in,input_data) + b_in
+    input_data = tf.reshape(X,[input_size,-1])
+    input_lstm = tf.matmul(w_in,tf.cast(input_data,tf.float32)) + b_in
     input_lstm = tf.reshape(input_lstm,[-1,time_step,hidden_rnn_layer])
+    input_lstm = tf.nn.leaky_relu(input_lstm)
     
     cell = tf.nn.rnn_cell.BasicLSTMCell(hidden_rnn_layer,forget_bias=0.0, state_is_tuple=True)
     cell = tf.nn.rnn_cell.DropoutWrapper(cell,input_keep_prob=forget_rate['input_keep_prob'],
@@ -102,8 +103,11 @@ def LSTM_model(X):
     output_lstm = tf.reshape(output_lstm,[hidden_rnn_layer,-1])
     w_out = weights['out']
     b_out = bias['out']
+    
     output_data = tf.matmul(w_out,output_lstm) + b_out
-    return output_data, final_state
+    output_data = tf.tanh(output_data)
+
+    return output_data,final_state
     
     
 def TrainLSTM():
@@ -157,35 +161,28 @@ def LSTMPredict():
             yhat.append(tf.reshape(p,[-1]))
         y = tf.reshape(test_y,[-1])
     
-    acc = 0
-    #for i in range(len(yhat)):
-       # if y[i]==yhat[i]:
-            #acc += 1
-    accuracy = acc/len(yhat)
-    #print("the accuracy of lstm is:"+ str(accuracy))
     return y,yhat
     
+
+def PreAccuracy(y,yhat):
+    y = tf.reshape(y,[-1,1])
+    yhat = tf.reshape(yhat,[-1,1])
+    with tf.Session() as sess:
+        array_y = np.array(y.eval(session=sess))
+        array_yhat = np.array(yhat.eval(session=sess))
     
-begin_time = time.time()
-TrainLSTM()
-end_time = time.time()
-print("the time consumed is:"+str(end_time-begin_time))
-
-
-y,yhat = LSTMPredict()
-y = tf.reshape(y,[-1,1])
-yhat = tf.reshape(yhat,[-1,1])
-with tf.Session() as sess:
-    array_y = y.eval(session=sess)
-    array_yhat = yhat.eval(session=sess)
-    acc = 0
-    for i in range(len(array_yhat)):
-        if array_yhat[i] > 0.5:
-            array_yhat[i] = 1
-        elif array_yhat[i] < 0.5:
-            array_yhat[i] = -1
-    for i in range(len(array_yhat)):
-        if array_y[i] == array_yhat[i]:
-            acc += 1
-    accuracy = acc/len(array_yhat)
-    print(accuracy)
+    array_yhat1 = np.array([1 if i>0 else -1 for i in array_yhat])
+    count_array1 = array_yhat1 - array_y
+    total_accuracy = (np.sum(count_array1==0))/len(array_y)
+    
+   # accuracy of 1
+    array_yhat2 = np.array([1 if i>0 else -100 for i in array_yhat]) 
+    count_array2 = array_yhat2 - array_y
+    plus1_accuracy = (np.sum(count_array2==0))/len(array_y)
+     
+    # accuracy of -1
+    array_yhat3 = np.array([100 if i>0 else -1 for i in array_yhat])
+    count_array3 = array_yhat3 - array_y
+    minus1_accuracy = (np.sum(count_array3==0))/len(array_y)
+    
+    return total_accuracy,plus1_accuracy,minus1_accuracy
