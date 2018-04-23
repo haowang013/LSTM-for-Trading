@@ -6,8 +6,8 @@ During the process, firstly we regularization the data including the train set a
 
 We can see training result as following: 
 <br/>
-![image](https://github.com/richardwang013/LSTM-for-Time-Series/raw/master/ImageStore/result.png)
+![image](https://github.com/richardwang013/LSTM-for-Time-Series/raw/master/ImageStore/result.PNG)
 <br/>
-The loss function is under 1 and it couldn't converge to 0. But it's a classifier and the last activate function I use in the LSTM model is tanh so the final result of the prediction is between -1 and 1 while the actual label is 1 or -1 so the maximun average square loss is 2 so the flucturate is just a common sense in this situation when it is always lower than 1.
+There are two hidden LSTM layers in the model and each layer have 10 cells. And considering to avoid gradient vanishing, we use the leaky_RELU function as activate function and tanh as the final activate function because we want to get a binary classifier. After 6000 iterations, the loss nearly converge to 0.
 <br/>
-The overall accuracy we get is 0.61 and the accuracy of predicion of 1 is 0.51 as the accuracy of prediction of -1 is 0.72
+The overall accuracy we get is 0.58 and the accuracy of predicion of 1 is 0.43 as the accuracy of prediction of -1 is 0.73
