@@ -9,17 +9,17 @@ import time
 
 # LSTM模型的参数设置
 hidden_rnn_layer = 10
-alpha = 0.005
+learning_rate = 0.005
 input_size = 7
 output_size = 1
-batch_size = 6
-
-time_step = 4
+batch_size = 4
+time_step = 2
+LSTM_layer_number = 2
 
 # 设置weight和bias以及forget gate
 forget_rate = {
-    'input_keep_prob':tf.Variable(tf.constant(0.9)),
-    'output_keep_prob':tf.Variable(tf.constant(0.97))
+    'input_keep_prob':tf.Variable(tf.constant(1.0)),
+    'output_keep_prob':tf.Variable(tf.constant(0.95)),
 }
 
 weights = {
@@ -32,7 +32,7 @@ bias = {
     'out':tf.Variable(tf.constant(0.0))
 }
 
-
+#loading data
 TrainingFile = "E:\\py_script\\ivx_rnn\\train.csv"
 TestingFile = "E:\\py_script\\ivx_rnn\\test.csv"
 
@@ -84,61 +84,97 @@ def LoadTestingData():
     
 ## 构建LSTM模型
 def LSTM_model(X):
+    """
+    the structure of the lstm: the input layer --->activate function 1---->Multi-RNN---->activate function 2
+    --->output layer--->activate function 3--->the prediction of label
+    any lstm layer has its own dopout 
+    """
     batch_size = tf.shape(X)[0]
     time_step = tf.shape(X)[1]
     w_in = weights['in']
     b_in = bias['in']
     input_data = tf.reshape(X,[input_size,-1])
     input_lstm = tf.matmul(w_in,tf.cast(input_data,tf.float32)) + b_in
-    input_lstm = tf.reshape(input_lstm,[-1,time_step,hidden_rnn_layer])
     input_lstm = tf.nn.leaky_relu(input_lstm)
+    input_lstm = tf.reshape(input_lstm,[-1,time_step,hidden_rnn_layer])
+    """
+    activate function for input layer to the lstm layer 1
+    """
+    #input_lstm = tf.nn.leaky_relu(input_lstm)
     
-    cell = tf.nn.rnn_cell.BasicLSTMCell(hidden_rnn_layer,forget_bias=0.0, state_is_tuple=True)
-    cell = tf.nn.rnn_cell.DropoutWrapper(cell,input_keep_prob=forget_rate['input_keep_prob'],
+    cell_1 = tf.nn.rnn_cell.BasicLSTMCell(hidden_rnn_layer, state_is_tuple=True)
+    cell_1 = tf.nn.rnn_cell.DropoutWrapper(cell_1,input_keep_prob=forget_rate['input_keep_prob'],
                                          output_keep_prob=forget_rate['output_keep_prob'])
     
-    init_state = cell.zero_state(batch_size,dtype=tf.float32)
+    Multi_lstm_cell = tf.nn.rnn_cell.MultiRNNCell([cell_1] * LSTM_layer_number, state_is_tuple=True)
     
-    output_lstm, final_state = tf.nn.dynamic_rnn(cell,input_lstm, initial_state=init_state, dtype=tf.float32)
+    #initialize the multi-rnn cells
+    init_state = Multi_lstm_cell.zero_state(batch_size, tf.float32)
+    
+    #run the lstm process
+    output_lstm, final_state = tf.nn.dynamic_rnn(Multi_lstm_cell, input_lstm, initial_state = init_state, time_major = False)
+    """
+    activate function for output from lstm layer 2 to the output layer
+    """
     output_lstm = tf.reshape(output_lstm,[hidden_rnn_layer,-1])
+    output_lstm = tf.nn.leaky_relu(output_lstm)
+    
     w_out = weights['out']
     b_out = bias['out']
     
     output_data = tf.matmul(w_out,output_lstm) + b_out
-    output_data = tf.tanh(output_data)
+    """
+    activate function for output from output layer to the label
+    """
+    output_data = tf.nn.leaky_relu(output_data)
 
     return output_data,final_state
     
     
-def TrainLSTM():
-    X = tf.placeholder(tf.float32, shape=[None, time_step, input_size])
-    Y = tf.placeholder(tf.float32, shape=[None, time_step, output_size])
-    batch_index,train_x,train_y = LoadTrainingData()
-    with tf.variable_scope('sec_lstm'):
-        output_data,_ = LSTM_model(X)
-        
-    Loss = tf.reduce_mean(tf.square(tf.reshape(output_data,[-1])-tf.reshape(Y,[-1])))
+def TrainLSTM(): 
+    """
+    set the optimizer and loss function, the we run this model to minimize the loss function
+    """
+    X = tf.placeholder(tf.float32,[None, time_step, input_size])
+    Y = tf.placeholder(tf.float32,[None, time_step, output_size])
     
-    train_op = tf.train.AdamOptimizer(alpha).minimize(Loss)
+    batch_index,train_x,train_y = LoadTrainingData()
+    
+    with tf.variable_scope('sec_lstm'):
+        output,__ = LSTM_model(X)
+    
+    # 全局变量lr
+    global learning_rate
+    Loss = tf.reduce_mean(tf.square(tf.reshape(output,[-1])-tf.reshape(Y,[-1])))
+    train_op = tf.train.AdamOptimizer(learning_rate).minimize(Loss)
     
     saver=tf.train.Saver(tf.global_variables(),max_to_keep=15)
-    init_op = tf.global_variables_initializer()
     
     loss_value = []
     iteration = []
+    lr = []
+    
+    init_op = tf.global_variables_initializer()
     with tf.Session() as sess:
         sess.run(init_op)
-        for i in range(4000):
+        for i in range(6000):
             for j in range(len(batch_index)-1):
+               # print(out_init)
                 loss_,_ = sess.run([Loss,train_op],feed_dict={X:train_x[batch_index[j]:batch_index[j+1]],Y:train_y[batch_index[j]:batch_index[j+1]]})
-            print("number of iteration:",i,"loss function is:",loss_)
+                
+            if(i%100==0):
+                print("number of iteration:",i,"loss function is:",loss_)
             iteration.append(i)
             loss_value.append(loss_)
-        print("model_save: ",saver.save(sess,'E:\\py_script\\ivx_rnn\\lstm_single'))
+           # if i>100 and loss_>np.mean(loss_value[i-10:i]):
+              #  learning_rate = 1.2*learning_rate
+          #  lr.append(learning_rate)  
+            
+        print("model_save: ",saver.save(sess,'E:\\py_script\\ivx_rnn\\lstm.ckpt'))
         plt.plot(iteration,loss_value,label='Loss Function')
         plt.legend()
         plt.show()
-        print("finish the training process")   
+        print("finish the training process")    
         
         
 def LSTMPredict():
