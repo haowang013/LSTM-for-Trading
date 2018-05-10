@@ -46,7 +46,7 @@ for i in np.arange(10,148,1):
         #date = datetime.strptime(date[i],'%Y/%m/%d')
     #except:
         #date = datetime.strptime(date[i],'%Y-%m-%d')
-    prediction = Predict(i-1)
+    prediction = predict.Predict(i-1)
 
     #################PART1 BUY SIDE#################
     ########## 一次买入1000股 && 当日平仓
