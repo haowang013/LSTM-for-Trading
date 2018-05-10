@@ -1,4 +1,4 @@
-# LSTM-for-Time-Series
+# LSTM-for-Trading-Timing
 
 It's a model using RNN/LSTM to predict the time series. The core idea of this project is the state of ivx of ETF50 could be classified to two parts. Hence, we give each sample a label -1 or 1 and -1 means ivx would decrease while 1 means ivx will increase. 
 
