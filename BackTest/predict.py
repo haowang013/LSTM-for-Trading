@@ -37,7 +37,7 @@ def LoadData(number):
 	return test_x
 
 
-def LSTMPredict(number):
+def Predict(number):
 	X = tf.placeholder(tf.float32, shape=[None, time_step, input_size])
 	test_x = LoadData(number)
 	with tf.variable_scope('sec_lstm',reuse = True):
