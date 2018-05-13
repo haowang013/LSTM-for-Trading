@@ -11,3 +11,6 @@ We can see training result as following:
 There are two hidden LSTM layers in the model and each layer have 10 cells. And considering to avoid gradient vanishing, we use the leaky_RELU function as activate function and tanh as the final activate function because we want to get a binary classifier. After 6000 iterations, the loss nearly converge to 0.
 <br/>
 The overall accuracy we get is 0.58 and the accuracy of predicion of 1 is 0.43 as the accuracy of prediction of -1 is 0.73
+<br/>
+The trading of 50ETF has a 12.36% anual yield rate and the win_rate is 41% due to the trading fee.
+![image](https://github.com/richardwang013/LSTM-for-Time-Series/raw/master/ImageStore/1.png)
